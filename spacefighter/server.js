@@ -6,7 +6,7 @@ var path = require('path');
 var socketIO = require('socket.io');
 
 //setting the port
-var port = process.env.PORT || 5069;
+var port = process.env.PORT || 8080;
 
 
 //initializing framework
