@@ -13,20 +13,19 @@ class Player extends Phaser.Physics.Arcade.Sprite {
         
         // physics rendering to move around and shoot with our players
         scene.physics.add.existing(this);
-        this.player_speed = 200;
         this.depth = 5;
         
         // holds scene
         this.scene = scene;
         //this.setInteractive();
         this.setCollideWorldBounds(true); //to ensure that the player stays in the window
-        
-        self = this;
 
         //scene.bullets is a group
         scene.physics.add.collider(this, scene.bullets, function() {
-            alert("You’re dead");
+            console.log("You’re dead");
         });
+
+        this.setVelocity(window.playerSpeed, 0)
 
         // set the players to rotate towards the cursor
         scene.input.on("pointermove", function(pointer) {
@@ -39,7 +38,10 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             
             const transformedPoint = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
             this.scene.physics.moveToObject(this, transformedPoint, 240);
+            this.sendUpdate()
         }, this);
+
+        this.updateInterval = setInterval(() => this.sendUpdate(), 1000)
     }
     
     update() {
@@ -51,18 +53,19 @@ class Player extends Phaser.Physics.Arcade.Sprite {
             {
                 // player method shoot
                 nextFire = this.scene.time.now + fireRate;
-                var x = self.x;
-                var y = self.y;
-                var angle = self.angle;
-                self.scene.io.emit('new_bullet', {x: x, y: y, angle: angle}); //for synchronizing shooting
+                var x = this.x;
+                var y = this.y;
+                var angle = this.angle;
+                this.scene.io.emit('new_bullet', {x: x, y: y, angle: angle}); //for synchronizing shooting
             }
         }
 
-        this.scene.cameras.main.scrollX = self.x - window.innerWidth / 2;
-        this.scene.cameras.main.scrollY = self.y -  window.innerHeight / 2;
+        this.scene.cameras.main.scrollX = this.x - window.innerWidth / 2;
+        this.scene.cameras.main.scrollY = this.y -  window.innerHeight / 2;
+    }
 
+    sendUpdate() {
         // send socket to server
-        this.scene.io.emit('player_moved', {x: this.x, y: this.y, angle: this.angle}); //the object contains the movement data
-
+        this.scene.io.emit('player_moved', {x: this.x, y: this.y, angle: this.angle, time: performance.now()}); //the object contains the movement data
     }
 }

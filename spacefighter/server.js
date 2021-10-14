@@ -6,7 +6,7 @@ var path = require('path');
 var socketIO = require('socket.io');
 
 //setting the port
-var port = process.env.PORT || 8080;
+var port = process.env.PORT || 5069;
 
 
 //initializing framework
@@ -53,6 +53,7 @@ io.on('connection', function (socket)
         players[socket.id].x = movement_data.x;
         players[socket.id].y = movement_data.y;
         players[socket.id].angle = movement_data.angle;
+        players[socket.id].time = movement_data.time;
 
         // send the data of movement to all players
         socket.broadcast.emit('enemy_moved', players[socket.id]);
@@ -67,6 +68,11 @@ io.on('connection', function (socket)
 
     socket.on('disconnect', function () {
         console.log("someone has disconnected");
+        delete players[socket.id];
+        socket.broadcast.emit('player_disconnect', socket.id);
+    });
+    socket.on('error', function () {
+        console.log("someone has disconnected due to an error");
         delete players[socket.id];
         socket.broadcast.emit('player_disconnect', socket.id);
     });

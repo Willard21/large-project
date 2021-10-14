@@ -3,6 +3,7 @@
 //storing height and width of the client’s browser
 var window_height = window.innerHeight;
 var window_width = window.innerWidth;
+var playerSpeed = 240 // Pixels per second of both enemies and players
 
 //since we’re using a phaser, we have to create a variable that holds the config data for the phaser.
 var config = {
@@ -65,33 +66,38 @@ function create() {
     this.add.tileSprite(0, 0, 2000, 1000, 'background').setOrigin(0, 0);
 
     this.io = io(); //initializing a new io server
-    self = this; //because we have an event handler
+    let self = this; //because we have an event handler
     
     this.enemies = this.physics.add.group();
     this.bullets = this.physics.add.group();
 
     this.io.on('actualPlayers', function(players)
     {
-        Object.keys(players).forEach(function (id)
+        for (let id in players)
         {
             //looping through the players
-            if (players[id].player_id == self.io.id)
+            if (id == self.io.id)
             {
                 //we are in the array
                 self.player_init = true;
                 self.player = new Player(self, players[id].x, players[id].y);
-            }else
+            } else
             {
                 // we are creating other players
                 createEnemy(self, players[id]);
             }
-        });
+        }
     });
 
     this.io.on('new_player', function (pInfo)
     {
+        if (pInfo.player_id == self.io.id) {
+            console.log("Don't add yourself as an enemy silly.")
+            return // Don't add ourselves.
+        }
+
         //we’re sending info about the new player from the server. So, we accept the info by pInfo
-        createEnemy(self.scene, pInfo);
+        createEnemy(self, pInfo);
     });
 
     //synchronizing enemy movement
@@ -99,10 +105,35 @@ function create() {
 
     this.io.on('enemy_moved', function(player_data)
     {
-        enemies_ref.getChildren().forEach(function(enemy) {
+        enemies_ref.children.entries.forEach(function(enemy) {
             if (player_data.player_id == enemy.id) { //set a new position for the enemy because the player data and enemy id in the enemy’s group match together
-                enemy.setPosition(player_data.x, player_data.y);
                 enemy.setAngle(player_data.angle);
+
+                const angle = player_data.angle / 180 * Math.PI;
+                const vx = Math.cos(angle);
+                const vy = Math.sin(angle);
+                enemy.setVelocity(vx * window.playerSpeed, vy * window.playerSpeed);
+
+                let now = performance.now()
+                if (!enemy.localCreatedTime) {
+                    enemy.localCreatedTime = now // Local player's time
+                    enemy.remoteCreatedTime = player_data.time  // Enemy player's time (different)
+                    enemy.setPosition(player_data.x, player_data.y);
+                } else {
+                    const realTime = now - enemy.localCreatedTime
+                    const enemyTime = player_data.time - enemy.remoteCreatedTime
+                    let difference = realTime - enemyTime
+                    if (difference < 0) {
+                        // Ping has improved. Adjust to get closer to real-time.
+                        enemy.remoteCreatedTime -= difference
+                        console.log(difference, enemy.remoteCreatedTime - enemy.localCreatedTime)
+                        difference = 0
+                    }
+                    
+                    const distance = window.playerSpeed / 1000 * difference;
+                    enemy.setPosition(player_data.x + vx * distance, player_data.y + vy * distance);
+                }
+                
             }
         });
     });
