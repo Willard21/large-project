@@ -91,11 +91,6 @@ function create() {
 
     this.io.on('new_player', function (pInfo)
     {
-        if (pInfo.player_id == self.io.id) {
-            console.log("Don't add yourself as an enemy silly.")
-            return // Don't add ourselves.
-        }
-
         //we’re sending info about the new player from the server. So, we accept the info by pInfo
         createEnemy(self, pInfo);
     });
